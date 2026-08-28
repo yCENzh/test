@@ -1,0 +1,36 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    ".astro/types.d.ts",
+    "**/*"
+  ],
+  "exclude": [
+    "dist"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./node_modules/shirones-test/src/*"
+      ],
+      "@components/*": [
+        "./node_modules/shirones-test/src/components/*"
+      ],
+      "@utils/*": [
+        "./node_modules/shirones-test/src/utils/*"
+      ],
+      "@layouts/*": [
+        "./node_modules/shirones-test/src/layouts/*"
+      ],
+      "@i18n/*": [
+        "./node_modules/shirones-test/src/i18n/*"
+      ],
+      "@constants/*": [
+        "./node_modules/shirones-test/src/constants/*"
+      ],
+      "@assets/*": [
+        "./node_modules/shirones-test/src/assets/*"
+      ]
+    }
+  }
+}

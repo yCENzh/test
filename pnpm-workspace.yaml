@@ -1,0 +1,9 @@
+allowBuilds:
+  esbuild: true
+  sharp: true
+minimumReleaseAgeExclude:
+  - astro@7.2.9
+  - shirones-test@0.0.6
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
