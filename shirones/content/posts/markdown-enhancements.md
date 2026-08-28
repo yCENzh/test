@@ -179,5 +179,5 @@ Point directly to any local directory path in the workspace to automatically sca
 @[code-tree title="Anime Utilities" entry="status.ts"](/src/utils/anime)
 ```
 
-@[code-tree title="Site Configuration" entry="siteConfig.ts"](/src/config)
+@[code-tree title="Site Configuration" entry="siteConfig.ts"](/shirones/config)
 
