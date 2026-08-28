@@ -157,3 +157,4 @@ Static encryption has no centralized server database. If a password is forgotten
 ## 4. Summary
 
 This demo verifies the entire encryption lifecycle in Shirone: zero plaintext in static output, robust cryptographic verification, session persistence across navigation and page reloads, and dynamic runtime rehydration.
+

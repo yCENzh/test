@@ -288,3 +288,4 @@ Reading,Outbound,140
 ```
 
 Each example uses a standard `mermaid` code fence. The server preserves readable source markup, and the browser enhances it into an SVG that follows the active theme. Diagrams render again when the theme changes or when Swup navigates to this article.
+

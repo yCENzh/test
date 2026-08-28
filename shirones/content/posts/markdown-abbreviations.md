@@ -35,3 +35,4 @@ SSR makes an HTML response available before client code runs.
 ## Authoring boundaries
 
 Terms must begin with a letter or number and may contain letters, numbers, periods, underscores, plus signs, and hyphens. Each definition applies to the current article only; an invalid or duplicate definition remains ordinary Markdown instead of silently replacing another term.
+

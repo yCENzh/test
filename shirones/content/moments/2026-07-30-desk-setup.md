@@ -18,3 +18,4 @@ images:
 Picked up a set of anime scenery wallpapers — mountains, sea, sky, each with its own palette.
 
 I rotate them as my desktop, one every few days. Cheaper joy than a new mousepad.
+

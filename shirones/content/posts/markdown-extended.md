@@ -122,3 +122,4 @@ Valid widths range from `w-1%` to `w-100%`; invalid tokens stay in the alt text.
 ![Album example image w-75%](/images/albums/AcgExample/08.webp)
 
 ![Album example image](/images/albums/AcgExample/09.webp "Caption without a width token")
+

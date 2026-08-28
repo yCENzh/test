@@ -48,3 +48,4 @@ Reuse a label [+review] to present a short sequence of related notes behind one 
 [+review]: Remove details that belong in the main article instead of the annotation.
 
 Undefined references such as `[+missing]` remain ordinary text, so an unfinished definition never creates an empty control.
+

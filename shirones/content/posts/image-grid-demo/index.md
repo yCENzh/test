@@ -474,3 +474,4 @@ Ordinary Markdown images in the same post continue to be handled separately; the
 5. Portrait images in "Four Columns with `contain`" are fully visible with empty space and no cropping.
 6. Five- and six-column grids retain their specified column count on wide screens, then collapse to two or one column according to the responsive rules.
 
+
