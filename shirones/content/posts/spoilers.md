@@ -24,3 +24,4 @@ The answer is :spoiler[42].
 
 The generated HTML uses a native button with an `aria-expanded` state. Without JavaScript, hover and focus still reveal the text; the optional runtime adds click and keyboard toggling.
 
+

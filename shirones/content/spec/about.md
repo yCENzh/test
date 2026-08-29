@@ -25,3 +25,4 @@ Shirone aims to combine the warmth of expressive anime aesthetics with the rigor
 
 - **Font**: [Yozai Font (悠哉字体)](https://github.com/lxgw/yozai-font) by [lxgw](https://github.com/lxgw)
 
+

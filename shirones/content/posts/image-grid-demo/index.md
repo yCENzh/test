@@ -475,3 +475,4 @@ Ordinary Markdown images in the same post continue to be handled separately; the
 6. Five- and six-column grids retain their specified column count on wide screens, then collapse to two or one column according to the responsive rules.
 
 
+
