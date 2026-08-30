@@ -1,0 +1,58 @@
+name: Shirones override-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream-repo:
+        description: "Theme repo to package"
+        required: true
+        default: "https://github.com/yCENzh/Shirone.git"
+      upstream-ref:
+        description: "Theme branch/tag to package"
+        required: true
+        default: "fix/package-mode-canonical-url-and-init"
+      shirones-ref:
+        description: "shirones pipeline repo ref to run the test from"
+        required: true
+        default: "main"
+
+concurrency:
+  group: override-test-${{ github.ref }}-${{ github.event.inputs.upstream-ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  override-test:
+    name: Full override-coverage test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout shirones pipeline
+        uses: actions/checkout@v7
+        with:
+          repository: yCENzh/shirones
+          ref: ${{ github.event.inputs.shirones-ref }}
+          path: shirones
+
+      # Mirror the publish workflow: track the latest pnpm (the published
+      # package's `packageManager` pins exactly this version) and node@24.
+      - name: Set up pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: latest
+          runtime: node@24
+          cache: false
+
+      - name: Install pipeline deps (esbuild)
+        working-directory: shirones
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run full override test
+        working-directory: shirones
+        env:
+          SHIRONES_UPSTREAM_REPO: ${{ github.event.inputs.upstream-repo }}
+          SHIRONES_UPSTREAM_REF: ${{ github.event.inputs.upstream-ref }}
+          SHIRONES_PACKAGE_NAME: shirones-test
+        run: node scripts/override-test.mjs
