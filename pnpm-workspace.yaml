@@ -3,7 +3,7 @@ allowBuilds:
   sharp: true
 minimumReleaseAgeExclude:
   - astro@7.2.9
-  - shirones-test@0.0.6
+  - shirones-test@0.0.6 || 0.0.17
 onlyBuiltDependencies:
   - esbuild
   - sharp
