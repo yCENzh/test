@@ -29,10 +29,13 @@ jobs:
           ref: work
           path: theme
 
+      # Left unset on purpose: pnpm/action-setup then reads the version from the
+      # checked-out packageManager field. Pinning it here would hide a mismatch
+      # between the declared version and the one that actually runs, which is
+      # exactly what went unnoticed when the field said 9.14.4 while the
+      # workspace file carried pnpm 11 settings.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.14.4
 
       # No `cache: pnpm` here. setup-node resolves the store by running
       # `pnpm store path` in the *test* repo root, and that directory has its own
@@ -42,6 +45,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Assert the declared packageManager is what runs
+        working-directory: theme
+        run: |
+          set -euo pipefail
+          declared=$(node -p "require('./package.json').packageManager.split('@')[1]")
+          actual=$(pnpm --version)
+          echo "declared=$declared actual=$actual"
+          test "$declared" = "$actual" \
+            || { echo "::error::packageManager says $declared but pnpm $actual is running"; exit 1; }
+
+      - name: Content pipeline validation
+        working-directory: theme
+        continue-on-error: true
+        run: pnpm content:validate
+
+      # Dry-run only. `--yes` deletes tracked files and rewrites the content tree,
+      # so the two regenerate() calls that now take functions instead of script
+      # paths (icon collections, moment thumbnails) are only reached on the real
+      # run. This step proves the entry point still starts and prints its plan;
+      # it does not exercise those calls. The same two functions *are* covered by
+      # the build and artefact steps above.
+      - name: Content clean (dry run)
+        working-directory: theme
+        run: node scripts/content/clean.mjs
 
       - name: Install
         working-directory: theme
