@@ -29,13 +29,17 @@ jobs:
           ref: work
           path: theme
 
-      # Left unset on purpose: pnpm/action-setup then reads the version from the
-      # checked-out packageManager field. Pinning it here would hide a mismatch
-      # between the declared version and the one that actually runs, which is
-      # exactly what went unnoticed when the field said 9.14.4 while the
-      # workspace file carried pnpm 11 settings.
+      # `package_json_file` rather than a literal version. The action can only
+      # look for `packageManager` in the working directory — the test repo root,
+      # which has none — so pointing it at the theme is what makes the declared
+      # version authoritative. A literal would hide a mismatch between the
+      # declared version and the one that runs, which is exactly what went
+      # unnoticed when the field said 9.14.4 while the workspace file carried
+      # pnpm 11 settings.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        with:
+          package_json_file: theme/package.json
 
       # No `cache: pnpm` here. setup-node resolves the store by running
       # `pnpm store path` in the *test* repo root, and that directory has its own
