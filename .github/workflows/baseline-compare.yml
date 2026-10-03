@@ -19,15 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # 48df663, not main. `main` predates the integration-driven generation, so
+      # its dev server cannot resolve `@/generated/local-icon-collections` and
+      # every comparison fails before a test runs. 48df663 is this branch as it
+      # stood before any of this work, which makes the two runs comparable.
       - uses: actions/checkout@v4
         with:
           repository: yCENzh/Shirone
-          ref: main
+          ref: 48df663
           path: theme
 
-      # main declares pnpm 9.14.4, the work branch declares 11.28.2, so the
-      # version has to come from whichever checkout this job is testing rather
-      # than from a shared literal.
+      # Version comes from the checkout under test: the work branch declares
+      # pnpm 11 and this baseline declares pnpm 9, so a shared literal would
+      # install the wrong one for half the comparison.
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: theme/package.json
