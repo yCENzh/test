@@ -34,12 +34,14 @@ jobs:
         with:
           version: 9.14.4
 
+      # No `cache: pnpm` here. setup-node resolves the store by running
+      # `pnpm store path` in the *test* repo root, and that directory has its own
+      # pnpm-workspace.yaml without a `packages` field, so pnpm exits 1 and the
+      # step fails before any theme code runs.
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: theme/pnpm-lock.yaml
 
       - name: Install
         working-directory: theme
