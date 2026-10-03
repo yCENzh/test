@@ -60,6 +60,21 @@ jobs:
         working-directory: theme
         run: pnpm exec playwright install --with-deps chrome
 
+      # The five that fail only on the work branch. Isolated from the wider list
+      # so a pass here is unambiguous: these are the ones whose origin the
+      # comparison has to settle.
+      - name: The work-only failures
+        working-directory: theme
+        env:
+          SHARP_CONCURRENCY: 2
+        run: |
+          pnpm exec playwright test --reporter=line \
+            tests/site/fonts.spec.ts \
+            tests/site/file-tree.spec.ts \
+            tests/site/code-tree.spec.ts \
+            tests/site/article-share.spec.ts \
+            tests/site/article-discovery.spec.ts
+
       - name: The specs that failed on the work branch
         working-directory: theme
         env:
