@@ -44,6 +44,18 @@ jobs:
         working-directory: theme
         run: pnpm install --frozen-lockfile
 
+      - name: Produce the artefacts the dev server needs
+        working-directory: theme
+        run: |
+          set -euo pipefail
+          # `playwright.config.ts` runs `astro dev` directly, bypassing the `dev`
+          # script chain that normally materialises these. On the work branch the
+          # integration generates them; on this baseline nothing does, so run the
+          # chain by hand or the dev server dies on a missing icon collection.
+          node scripts/content/sync.mjs
+          node scripts/icons/generate-local-icons.mjs
+          node scripts/images/generate-moment-thumbnails.mjs
+
       - name: Install Playwright browsers
         working-directory: theme
         run: pnpm exec playwright install --with-deps chrome
