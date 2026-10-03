@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: yCENzh/Shirone
-          ref: 48df663
+          ref: 48df66350818a57c2df85611bc6b7d6874fc70d5
           path: theme
 
       # Version comes from the checkout under test: the work branch declares
