@@ -13,6 +13,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  baseline:
+    name: Baseline (origin/main, unmodified)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: yCENzh/Shirone
+          ref: main
+          path: theme
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: theme/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - working-directory: theme
+        run: pnpm install --frozen-lockfile
+      - working-directory: theme
+        env:
+          SHARP_CONCURRENCY: 2
+        run: pnpm exec playwright install --with-deps chrome
+      # Same spec subset that failed on the work branch, so the comparison is
+      # like for like: date/grouping/filter assertions, not visual snapshots.
+      - name: Failing specs on unmodified main
+        working-directory: theme
+        env:
+          SHARP_CONCURRENCY: 2
+        run: |
+          pnpm exec playwright test --reporter=line \
+            tests/site/math.spec.ts \
+            tests/site/last-updated-notice.spec.ts \
+            tests/site/archive-grouping.spec.ts \
+            tests/site/archive-filter.spec.ts \
+            tests/site/projects.spec.ts \
+            tests/site/taxonomy.spec.ts \
+            tests/site/steps.spec.ts \
+            tests/site/mdx.spec.ts
+
   verify:
     name: Static checks, build and Playwright
     runs-on: ubuntu-latest
