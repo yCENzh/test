@@ -186,8 +186,17 @@ jobs:
       # (/src/utils/…, /src/config/…) to reach behaviour a built bundle cannot
       # expose. Starting `astro preview` instead fails those with "Failed to
       # fetch dynamically imported module".
+      # `visual.spec.ts` is excluded by listing the files rather than by editing
+      # playwright.config.ts: its snapshots live in
+      # `tests/site/visual.spec.ts-snapshots/`, which .gitignore:66 keeps out of
+      # every checkout, so `toHaveScreenshot` can never pass on CI. The whole file
+      # is one test and every assertion in it is a snapshot comparison. Visual
+      # review stays a local job — AGENTS.md already describes snapshots as local
+      # baselines that are updated only after a human confirms the difference.
       - name: Playwright
         working-directory: theme
         env:
           SHARP_CONCURRENCY: 2
-        run: pnpm exec playwright test --reporter=line --shard=${{ matrix.shard }}
+        run: |
+          mapfile -t specs < <(ls tests/site/*.spec.ts | grep -v 'visual\.spec\.ts$')
+          pnpm exec playwright test --reporter=line --shard=${{ matrix.shard }} "${specs[@]}"

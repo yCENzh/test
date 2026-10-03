@@ -65,6 +65,8 @@ jobs:
         env:
           SHARP_CONCURRENCY: 2
         run: |
+          # visual.spec.ts is excluded on both sides so the two runs are
+          # comparable: its snapshots are gitignored and can never pass on CI.
           pnpm exec playwright test --reporter=line \
             tests/site/math.spec.ts \
             tests/site/last-updated-notice.spec.ts \
