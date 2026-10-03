@@ -60,6 +60,14 @@ jobs:
           test "$declared" = "$actual" \
             || { echo "::error::packageManager says $declared but pnpm $actual is running"; exit 1; }
 
+      - name: Install
+        working-directory: theme
+        run: pnpm install --frozen-lockfile
+
+      # After Install on purpose: `thumbnails/generate.ts` imports sharp at the
+      # top level, so the content scripts need dependencies installed. Locally
+      # this hides — node_modules is always present, and a dry run never reaches
+      # the regenerate calls anyway.
       - name: Content pipeline validation
         working-directory: theme
         continue-on-error: true
@@ -74,10 +82,6 @@ jobs:
       - name: Content clean (dry run)
         working-directory: theme
         run: node scripts/content/clean.mjs
-
-      - name: Install
-        working-directory: theme
-        run: pnpm install --frozen-lockfile
 
       - name: astro check
         working-directory: theme
