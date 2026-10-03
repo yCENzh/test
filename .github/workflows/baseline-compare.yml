@@ -1,0 +1,60 @@
+name: Baseline compare
+
+# Diagnostic only, not part of the normal gate. Runs the specs that failed on the
+# work branch against an unmodified checkout, on the same runner image, so the
+# result says which failures the branch introduced and which were already there.
+#
+# The visual snapshot specs are excluded on purpose:
+# `tests/site/visual.spec.ts-snapshots/` is gitignored (.gitignore:66), so the
+# snapshots exist in no checkout and those tests can never pass here.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: Unmodified main, same specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: yCENzh/Shirone
+          ref: main
+          path: theme
+
+      # main declares pnpm 9.14.4, the work branch declares 11.28.2, so the
+      # version has to come from whichever checkout this job is testing rather
+      # than from a shared literal.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: theme/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        working-directory: theme
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: theme
+        run: pnpm exec playwright install --with-deps chrome
+
+      - name: The specs that failed on the work branch
+        working-directory: theme
+        env:
+          SHARP_CONCURRENCY: 2
+        run: |
+          pnpm exec playwright test --reporter=line \
+            tests/site/math.spec.ts \
+            tests/site/last-updated-notice.spec.ts \
+            tests/site/archive-grouping.spec.ts \
+            tests/site/archive-filter.spec.ts \
+            tests/site/projects.spec.ts \
+            tests/site/taxonomy.spec.ts \
+            tests/site/steps.spec.ts \
+            tests/site/mdx.spec.ts

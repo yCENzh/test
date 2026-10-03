@@ -13,82 +13,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  baseline:
-    name: Baseline (origin/main, unmodified)
+  # ── Fast gate ──────────────────────────────────────────────────────────────
+  # Everything that reads source only. Fails in ~2 min, so a broken manifest or
+  # a stale test import surfaces without waiting on a build or the e2e suite.
+  checks:
+    name: Static checks
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: yCENzh/Shirone
-          ref: main
-          path: theme
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: theme/package.json
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - working-directory: theme
-        run: pnpm install --frozen-lockfile
-      - working-directory: theme
-        env:
-          SHARP_CONCURRENCY: 2
-        run: pnpm exec playwright install --with-deps chrome
-      # Same spec subset that failed on the work branch, so the comparison is
-      # like for like: date/grouping/filter assertions, not visual snapshots.
-      - name: Failing specs on unmodified main
-        working-directory: theme
-        env:
-          SHARP_CONCURRENCY: 2
-        run: |
-          pnpm exec playwright test --reporter=line \
-            tests/site/math.spec.ts \
-            tests/site/last-updated-notice.spec.ts \
-            tests/site/archive-grouping.spec.ts \
-            tests/site/archive-filter.spec.ts \
-            tests/site/projects.spec.ts \
-            tests/site/taxonomy.spec.ts \
-            tests/site/steps.spec.ts \
-            tests/site/mdx.spec.ts
-
-  verify:
-    name: Static checks, build and Playwright
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-
-    steps:
-      - name: Check out the test repo
-        uses: actions/checkout@v4
-
-      - name: Check out Shirone (work branch)
-        uses: actions/checkout@v4
         with:
           repository: yCENzh/Shirone
           ref: work
           path: theme
 
-      # `package_json_file` rather than a literal version. The action can only
-      # look for `packageManager` in the working directory — the test repo root,
-      # which has none — so pointing it at the theme is what makes the declared
-      # version authoritative. A literal would hide a mismatch between the
-      # declared version and the one that runs, which is exactly what went
-      # unnoticed when the field said 9.14.4 while the workspace file carried
-      # pnpm 11 settings.
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      # `package_json_file` rather than a literal: the action only looks for
+      # `packageManager` in the working directory, which here is the test repo
+      # root and has none. A literal would hide a mismatch between the declared
+      # version and the one that runs.
+      - uses: pnpm/action-setup@v4
         with:
           package_json_file: theme/package.json
 
-      # No `cache: pnpm` here. setup-node resolves the store by running
-      # `pnpm store path` in the *test* repo root, and that directory has its own
-      # pnpm-workspace.yaml without a `packages` field, so pnpm exits 1 and the
-      # step fails before any theme code runs.
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      # No `cache: pnpm`. setup-node resolves the store by running
+      # `pnpm store path` in the working directory, whose pnpm-workspace.yaml has
+      # no `packages` field, so pnpm exits 1 before any theme code runs.
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install
+        working-directory: theme
+        run: pnpm install --frozen-lockfile
 
       - name: Assert the declared packageManager is what runs
         working-directory: theme
@@ -100,34 +56,11 @@ jobs:
           test "$declared" = "$actual" \
             || { echo "::error::packageManager says $declared but pnpm $actual is running"; exit 1; }
 
-      - name: Install
-        working-directory: theme
-        run: pnpm install --frozen-lockfile
-
-      # After Install on purpose: `thumbnails/generate.ts` imports sharp at the
-      # top level, so the content scripts need dependencies installed. Locally
-      # this hides — node_modules is always present, and a dry run never reaches
-      # the regenerate calls anyway.
-      - name: Content pipeline validation
-        working-directory: theme
-        continue-on-error: true
-        run: pnpm content:validate
-
-      # Dry-run only. `--yes` deletes tracked files and rewrites the content tree,
-      # so the two regenerate() calls that now take functions instead of script
-      # paths (icon collections, moment thumbnails) are only reached on the real
-      # run. This step proves the entry point still starts and prints its plan;
-      # it does not exercise those calls. The same two functions *are* covered by
-      # the build and artefact steps above.
-      - name: Content clean (dry run)
-        working-directory: theme
-        run: node scripts/content/clean.mjs
-
       - name: astro check
         working-directory: theme
         run: pnpm check
 
-      - name: Atom and skills manifests
+      - name: Atom, markdown and skills manifests
         working-directory: theme
         run: pnpm check:manifest
 
@@ -139,23 +72,65 @@ jobs:
         working-directory: theme
         run: pnpm design:lint
 
-      # Expected to fail on the current branch: `--isolatedDeclarations` errors
-      # in motion.ts / meting.ts / setting-utils.ts predate this work. Kept as a
-      # separate step so the failure is attributed rather than masking the rest.
+      # `--isolatedDeclarations` errors in motion.ts / meting.ts / setting-utils.ts
+      # predate this work and also fail on unmodified main. Separate step so the
+      # failure is attributed instead of masking the rest.
       - name: type-check (known failing)
         working-directory: theme
         continue-on-error: true
         run: pnpm type-check
 
+      # After Install on purpose: `thumbnails/generate.ts` imports sharp at module
+      # scope. A local run hides this because node_modules is always present.
+      - name: Content pipeline validation
+        working-directory: theme
+        continue-on-error: true
+        run: pnpm content:validate
+
+      # Dry run only. `--yes` deletes tracked files, so the two regenerate() calls
+      # that now take functions instead of script paths are only reached on the
+      # real run. The same functions are covered by the build job below.
+      - name: Content clean (dry run)
+        working-directory: theme
+        run: node scripts/content/clean.mjs
+
+  # ── Build gate ──────────────────────────────────────────────────────────────
+  # Independent of `checks`: both only need the checkout and an install, so they
+  # run at the same time instead of one waiting on the other.
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: yCENzh/Shirone
+          ref: work
+          path: theme
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: theme/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        working-directory: theme
+        run: pnpm install --frozen-lockfile
+
       - name: Build
         working-directory: theme
         env:
-          # The image-optimisation pass exceeds the runner's default heap when
-          # sharp uses its full concurrency.
+          # 77 images through sharp exceed the default heap at full concurrency.
           SHARP_CONCURRENCY: 2
         run: pnpm build
 
-      - name: Confirm generated artefacts exist without a build-time script
+      # Proves the artefacts come from the integration rather than a build-time
+      # script: no script chain step exists any more, so their presence can only
+      # mean `astro:config:setup` / `buildStart` produced them.
+      - name: Assert the integration generated the artefacts
         working-directory: theme
         run: |
           set -euo pipefail
@@ -165,27 +140,54 @@ jobs:
           echo "thumbnails: $count"
           test "$count" -gt 0 \
             || { echo "::error::no thumbnails generated"; exit 1; }
-          grep -c 'local-icon-collections' dist/index.html >/dev/null 2>&1 || true
           echo "artefacts generated by the integration, not the script chain"
 
+  # ── End-to-end ──────────────────────────────────────────────────────────────
+  # `playwright.config.ts` sets workers: 1, so 434 specs run serially in one
+  # worker and a single runner needs ~40 min. Sharding across runners keeps each
+  # one serial — preserving whatever ordering the suite depends on — while
+  # splitting the file list, so the wall clock is roughly the slowest shard.
+  e2e:
+    name: Playwright (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/5", "2/5", "3/5", "4/5", "5/5"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: yCENzh/Shirone
+          ref: work
+          path: theme
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: theme/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        working-directory: theme
+        run: pnpm install --frozen-lockfile
+
       # The suite's own config asks for `channel: chrome`. Install that channel
-      # rather than overriding the project list — `--project=chromium` fails here
+      # rather than overriding the project list — `--project=chromium` fails
       # because the config defines no such project.
       - name: Install Playwright browsers
         working-directory: theme
         run: pnpm exec playwright install --with-deps chrome
 
-      # No manual server here on purpose. `playwright.config.ts` already declares
-      # a `webServer` that runs `astro dev`, and 18 specs import theme source
-      # (`page.evaluate` on /src/utils/... , /src/config/...) to exercise
-      # behaviour a built bundle cannot expose. Starting `astro preview` instead
-      # fails those with "Failed to fetch dynamically imported module" — the
-      # sandbox that prompted this workflow cannot start `astro dev`, but a
-      # runner can (`astro ready in 16ms`), so let the config do its job.
-      - name: Playwright suite
+      # No manual server. `playwright.config.ts` declares a `webServer` that runs
+      # `astro dev`, and 18 specs import theme source through `page.evaluate`
+      # (/src/utils/…, /src/config/…) to reach behaviour a built bundle cannot
+      # expose. Starting `astro preview` instead fails those with "Failed to
+      # fetch dynamically imported module".
+      - name: Playwright
         working-directory: theme
         env:
-          # 147 Stylus components exceed the default heap when sharp uses full
-          # concurrency; the same limit the build step needs.
           SHARP_CONCURRENCY: 2
-        run: pnpm exec playwright test --reporter=line
+        run: pnpm exec playwright test --reporter=line --shard=${{ matrix.shard }}
