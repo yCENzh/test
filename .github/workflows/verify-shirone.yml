@@ -135,13 +135,17 @@ jobs:
         working-directory: theme
         run: pnpm exec playwright install --with-deps chrome
 
-      - name: Playwright suite (against a production build)
+      # No manual server here on purpose. `playwright.config.ts` already declares
+      # a `webServer` that runs `astro dev`, and 18 specs import theme source
+      # (`page.evaluate` on /src/utils/... , /src/config/...) to exercise
+      # behaviour a built bundle cannot expose. Starting `astro preview` instead
+      # fails those with "Failed to fetch dynamically imported module" — the
+      # sandbox that prompted this workflow cannot start `astro dev`, but a
+      # runner can (`astro ready in 16ms`), so let the config do its job.
+      - name: Playwright suite
         working-directory: theme
-        run: |
-          set -euo pipefail
-          pnpm exec astro preview --port 4321 &
-          for i in $(seq 1 30); do
-            curl -sf -o /dev/null http://localhost:4321/ && break
-            sleep 2
-          done
-          pnpm exec playwright test --reporter=line
+        env:
+          # 147 Stylus components exceed the default heap when sharp uses full
+          # concurrency; the same limit the build step needs.
+          SHARP_CONCURRENCY: 2
+        run: pnpm exec playwright test --reporter=line
