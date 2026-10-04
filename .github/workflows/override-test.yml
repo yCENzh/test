@@ -10,11 +10,14 @@ on:
       upstream-ref:
         description: "Theme branch/tag to package"
         required: true
-        default: "fix/package-mode-canonical-url-and-init"
+        default: "work"
+      # Must point at a ref whose build-package.mjs matches the theme's
+      # generator layout. A stale ref here fails with "shipped source imports
+      # files that are not in the tarball", which reads like a theme bug.
       shirones-ref:
         description: "shirones pipeline repo ref to run the test from"
         required: true
-        default: "main"
+        default: "work"
 
 concurrency:
   group: override-test-${{ github.ref }}-${{ github.event.inputs.upstream-ref }}
