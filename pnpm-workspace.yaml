@@ -41,3 +41,4 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - swup
+# CI path-filter smoke fixture (comment only; no behavior change)
