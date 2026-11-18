@@ -1,0 +1,80 @@
+name: Flake probe
+
+# Measures how often a Playwright spec fails on two refs of this repository,
+# each loop against a fresh dev server. Used to tell a flaky spec from a
+# regression: one run of the full suite cannot.
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Spec file(s) to run"
+        required: true
+        default: "tests/site/list-pagination.spec.ts"
+      loops:
+        description: "Runs per job"
+        required: true
+        default: "5"
+      candidate:
+        description: "Branch under test"
+        required: true
+        default: "verify/virtual-icons"
+      baseline:
+        description: "Branch to compare against"
+        required: true
+        default: "verify/legacy-theme-new-pin"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: ${{ matrix.side }} #${{ matrix.instance }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [candidate, baseline]
+        instance: [1, 2, 3]
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.side == 'candidate' && inputs.candidate || inputs.baseline }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the spec repeatedly
+        env:
+          SPEC: ${{ inputs.spec }}
+          LOOPS: ${{ inputs.loops }}
+        run: |
+          pass=0; fail=0
+          for i in $(seq 1 "$LOOPS"); do
+            # A fresh dev server per loop, as at the start of a CI shard.
+            if pnpm exec playwright test $SPEC > "run-$i.log" 2>&1; then
+              pass=$((pass + 1)); echo "loop $i: pass"
+            else
+              fail=$((fail + 1)); echo "loop $i: FAIL"
+              grep -E '✘|Error:|Expected:|Received:|^ +> +[0-9]+ \|' "run-$i.log" || true
+            fi
+            tail -n 3 "run-$i.log"
+            pkill -f 'astro dev' || true
+            sleep 2
+          done
+          echo "PROBE_RESULT side=${{ matrix.side }} sha=$(git rev-parse --short HEAD) pass=$pass fail=$fail"
